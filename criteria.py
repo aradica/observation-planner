@@ -2,13 +2,6 @@ import datetime
 from dataclasses import dataclass
 
 
-@dataclass
-class Criteria:
-    """Final data abstraction layer"""
-    pass
-
-
-@dataclass
 class ObservingDate(datetime.datetime):
     """Data abstraction layer"""
     pass
@@ -17,13 +10,13 @@ class ObservingDate(datetime.datetime):
 @dataclass
 class Observability:
     """Data abstraction layer"""
-
     RA_range: tuple
     decl_range: tuple
     magnitude_range: tuple
     motion_range: tuple
+    motion_unit: str
     solar_elong: tuple
-    lower_galactic_lat_limit: tuple
+    lower_galactic_lat_limit: int
 
 
 @dataclass
@@ -31,7 +24,7 @@ class Uncertainty:
     """Data abstraction layer"""
     current_uncertainty: tuple
     consider_sigma: int
-    only_show_not_seen_more_than: int
+    days_since: int
 
 
 @dataclass
@@ -51,8 +44,8 @@ class ObjectStatus:
     multiple_opposition_unnumbered: bool
     current_opposition_one_opp_unnumbered: bool
     previous_opposition_one_opp_unnumbered: bool
-    ignore_brightening_at_solar_elongs_greater_than: bool
-    ignore_currently_brighter_than: bool
+    ignore_brightening_at_solar_elongs_greater_than: int
+    ignore_currently_brighter_than: int
     display_labels: bool
 
 
@@ -71,13 +64,33 @@ class MPES:
     ephemeris_interval: int
     ephemeris_units: str
     position_units: str
-
-
-@dataclass
-class Motions:
-    """Data abstraction layer"""
     mode: int
     display: str
 
 
+@dataclass
+class Criteria:
+    """Final data abstraction layer"""
+    observingDate: ObservingDate
+    observability: Observability
+    uncertainty: Uncertainty
+    objectType: ObjectType
+    objectStatus: ObjectStatus
+    resultSorting: ResultSorting
+    mpes: MPES
+
 # Cookie option?
+
+
+if __name__ == "__main__":
+    observingDate = ObservingDate(2019, 7, 20)
+    observability = Observability(
+        (-120, 120), (-90, 90), (0, 21), (0, 5), "d", (60, 180), 0)
+    uncertainty = Uncertainty((10, 1800), 1, 0)
+    objectType = ObjectType(1, 1, 1, 1, 1)
+    objectStatus = ObjectStatus(1, 1, 1, 1, 100, 21, 1)
+    resultSorting = ResultSorting(1, 1)
+    mpes = MPES("L01", None, 1, "h", "a", "t", "m")
+
+    criteria = Criteria(observingDate, observability, uncertainty, objectType,
+                        objectStatus, resultSorting, mpes)

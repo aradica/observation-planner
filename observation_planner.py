@@ -1,5 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
+from criteria import *
 
 
 class ObservationPlanner:
@@ -11,50 +12,68 @@ class ObservationPlanner:
 
     def produce_object_list(self, criteria):
         r = requests.post(self.criteria_url, data={
-            "date": 20190720,
-            "ralo": -120,
-            "rahi": +120,
-            "declo": -90,
-            "dechi": +90,
-            "magbr": None,
-            "magfa": 21.0,
-            "motlo": 0.0,
-            "mothi": 5.0,
-            "mtype": "d",
-            "elolo": 60,
-            "elohi": 180,
-            "gallat": 0,
-            "unclo": 10,
-            "unchi": 1800,
-            "uncsig": 1,
-            "dayssince": 0,
-            "typ1": "V",
-            "typ2": "P",
-            "typ3": "t",
-            "typ4": "p",
-            "typ5": "m",
-            "stat1": "N",
-            "stat2": "M",
-            "stat3": "1",
-            "stat4": "P",
-            "bel": 100,
-            "bmag": 21.0,
-            "sort": 1,
-            "dirsort": 1,
-            "oc": None,
-            "ndate": None,
-            "ephint": 1,
-            "ephunit": "h",
+            # Planned date of obs.
+            "date": str(criteria.observingDate.date()).replace("-", ""),
+
+            # Observability options
+            "ralo": criteria.observability.RA_range[0],
+            "rahi": criteria.observability.RA_range[1],
+            "declo": criteria.observability.decl_range[0],
+            "dechi": criteria.observability.decl_range[1],
+            "magbr": criteria.observability.magnitude_range[0],
+            "magfa": criteria.observability.magnitude_range[1],
+            "motlo": criteria.observability.motion_range[0],
+            "mothi": criteria.observability.motion_range[1],
+            "mtype": criteria.observability.motion_unit,
+            "elolo": criteria.observability.solar_elong[0],
+            "elohi": criteria.observability.solar_elong[1],
+            "gallat": criteria.observability.lower_galactic_lat_limit,
+
+            # Uncertainty
+            "unclo": criteria.uncertainty.current_uncertainty[0],
+            "unchi": criteria.uncertainty.current_uncertainty[1],
+            "uncsig": criteria.uncertainty.consider_sigma,
+            "dayssince": criteria.uncertainty.days_since,
+
+            # Object type
+            "typ1": "V" if criteria.objectType.VIs else None,
+            "typ2": "P" if criteria.objectType.PHAs else None,  # if
+            "typ3": "t" if criteria.objectType.atens else None,  # ...
+            "typ4": "p" if criteria.objectType.appolos else None,
+            "typ5": "m" if criteria.objectType.amors else None,
+
+            # Object status
+            "stat1": "N" if criteria.objectStatus.numbered else None,
+            "stat2": "M" if criteria.objectStatus.multiple_opposition_unnumbered else None,
+            "stat3": "1" if criteria.objectStatus.current_opposition_one_opp_unnumbered else None,
+            "stat4": "P" if criteria.objectStatus.previous_opposition_one_opp_unnumbered else None,
+            "bel": criteria.objectStatus.ignore_brightening_at_solar_elongs_greater_than,
+            "bmag": criteria.objectStatus.ignore_currently_brighter_than,
+            # Display labels?
+
+            # Result sorting
+            "sort": {"designation": 1, "uncertainty": 2, "decl": 3, "ra": 4}.get(criteria.resultSorting.sort_by),
+            "dirsort": {"increasing": 1, "decreasing": 2}.get(criteria.resultSorting.order),
+
+            # MPES
+            "oc": criteria.mpes.observatory_code,
+            "ndate": criteria.mpes.n_of_ephemeris_dates,
+            "ephint": criteria.mpes.ephemeris_interval,
+            "ephunit": criteria.mpes.ephemeris_units,
             "raty": "a",
             "motty": "t",
             "motun": "m"
         })
 
         soup = BeautifulSoup(r.text, "html.parser")
-        lines = str(soup.body.form.pre)[6:].splitlines()[:-1]
         names = []
-        for line in lines:
-            names.append(line.split("value=")[1][1:8])
+
+        # If there are objects with that criteria at that time
+        if "pre" in dir(soup):
+            lines = str(soup.body.form.pre)[6:].splitlines()[:-1]
+
+            for line in lines:
+                names.append(line.split("value=")[1][1:8])
         return names
 
     def get_ephemeris(self, object_list):
@@ -76,7 +95,19 @@ class ObservationPlanner:
 
 
 if __name__ == "__main__":
+    observingDate = ObservingDate(2019, 7, 20)
+    observability = Observability(
+        (-120, 120), (-90, 90), (0, 21), (0, 5), "d", (60, 180), 0)
+    uncertainty = Uncertainty((10, 1800), 1, 0)
+    objectType = ObjectType(1, 1, 1, 1, 1)
+    objectStatus = ObjectStatus(1, 1, 1, 1, 100, 21, 1)
+    resultSorting = ResultSorting(1, 1)
+    mpes = MPES("L01", None, 1, "h", "a", "t", "m")
+
+    criteria = Criteria(observingDate, observability, uncertainty, objectType,
+                        objectStatus, resultSorting, mpes)
+
     obs = ObservationPlanner()
-    names = obs.produce_object_list("CRITERIA")
+    names = obs.produce_object_list(criteria)
     print("OBJECTS:", names)
     obs.get_ephemeris(names)
