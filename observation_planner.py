@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 
 
-class ObservationPlanningAid:
+class ObservationPlanner:
     criteria_url = "https://cgi.minorplanetcenter.net/cgi-bin/neaobs_getlist.cgi"
     ephemeris_url = "https://cgi.minorplanetcenter.net/cgi-bin/mpeph.cgi"
 
@@ -76,7 +76,7 @@ class ObservationPlanningAid:
 
 
 if __name__ == "__main__":
-    obs = ObservationPlanningAid()
+    obs = ObservationPlanner()
     names = obs.produce_object_list("CRITERIA")
     print("OBJECTS:", names)
     obs.get_ephemeris(names)
